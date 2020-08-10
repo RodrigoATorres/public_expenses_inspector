@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "public_expenses_inspector"
+version = "0.1.0"
+description = ""
+authors = ["Rodrigo Torres <rodrigotorres.dev@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.7"
+selenium = "^3.141.0"
+python-dotenv = "^0.14.0"
+requests = "^2.24.0"
+python-anticaptcha = "^0.7.1"
+
+[tool.poetry.dev-dependencies]
+pytest = "^4.6"
+pylint = "^2.5.3"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
