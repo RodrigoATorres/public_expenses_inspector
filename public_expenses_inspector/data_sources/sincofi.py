@@ -1,6 +1,7 @@
 import os
 import shutil
 from pathlib import Path
+import json
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -10,11 +11,14 @@ from selenium.webdriver.common.action_chains import ActionChains
 
 from helpers.captcha import imageCaptchaSolver
 
+from sqlalchemy.orm import sessionmaker
+
+from models.ente import Ente
+
 import time
 import ssl
 ssl._create_default_https_context = ssl._create_unverified_context
-import urllib.request
-
+import requests
 
 class SiconfiDriver:
 
@@ -59,12 +63,12 @@ class SiconfiDriver:
         time.sleep(5)
         self.downloadAllXBRL()
 
-        dir_path = "{}/{}/{}/{}/{}/{}".format(os.getcwd(),estado, ente, poder, orgao, exercicio)
+        dir_path = "{}/data/siconfi/{}/{}/{}/{}/{}".format(os.getcwd(),estado, ente, poder, orgao, exercicio)
         Path(dir_path).mkdir(parents=True, exist_ok=True)
 
         files = os.listdir('data/siconfi/tmp')
         for f in files:
-            shutil.move('data/siconfi/tmp/'+f, 'data/siconfi/' + dir_path)
+            shutil.move('data/siconfi/tmp/'+f, dir_path)
 
     def selectDropDown(self, dropdown_label, opt_label):
         elem1 = self.driver.find_element_by_id(dropdown_label)
@@ -157,3 +161,37 @@ class SiconfiDriver:
         for elem in elems[::-1]:
             elem.click()
             time.sleep(10)
+
+class SiconfiAPIFetcher:
+
+    def __init__(self, db_engine):
+        self.baseUrl = 'http://apidatalake.tesouro.gov.br/ords/siconfi/tt'
+        self.db_engine = db_engine
+
+    def getItems(self, path, params, callback):
+        resp = requests.get( '{}/{}'.format(self.baseUrl, path) , params=params)
+        
+        resp = resp.json()
+        for item in resp['items']:
+            callback(item)
+        
+        time.sleep(1)
+        
+        if resp['hasMore']:
+            params['offset'] = resp.offset + resp.limit
+            self.getItens(path, params, callback) 
+
+
+    def getEntes(self):
+        def add_item(item):
+            item['capital'] = int(item['capital']) == 1
+            Session = sessionmaker()
+            Session.configure(bind = self.db_engine)
+            session = Session()
+            print(item)
+            row = Ente(**item)
+            session.add(row)
+            session.commit()
+
+        self.getItems('entes',{}, add_item)
+        
