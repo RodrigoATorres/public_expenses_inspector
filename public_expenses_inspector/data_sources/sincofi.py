@@ -185,10 +185,10 @@ class SiconfiAPIFetcher:
     def getEntes(self):
         def add_item(item):
             item['capital'] = int(item['capital']) == 1
+            print(item)
             Session = sessionmaker()
             Session.configure(bind = self.db_engine)
             session = Session()
-            print(item)
             row = Ente(**item)
             session.add(row)
             session.commit()
