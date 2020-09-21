@@ -2,6 +2,7 @@ import os
 import shutil
 from pathlib import Path
 import json
+from datetime import datetime
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -14,6 +15,7 @@ from helpers.captcha import imageCaptchaSolver
 from sqlalchemy.orm import sessionmaker
 
 from models.ente import Ente
+from models.mscOrcamentaria import MscOrcamentaria
 
 import time
 import ssl
@@ -177,15 +179,15 @@ class SiconfiAPIFetcher:
         
         time.sleep(1)
         
+        print(resp['count'])
         if resp['hasMore']:
-            params['offset'] = resp.offset + resp.limit
-            self.getItens(path, params, callback) 
+            params['offset'] = resp['offset'] + resp['limit']
+            self.getItems(path, params, callback) 
 
 
     def getEntes(self):
         def add_item(item):
             item['capital'] = int(item['capital']) == 1
-            print(item)
             Session = sessionmaker()
             Session.configure(bind = self.db_engine)
             session = Session()
@@ -194,4 +196,17 @@ class SiconfiAPIFetcher:
             session.commit()
 
         self.getItems('entes',{}, add_item)
-        
+
+
+    def getMscOrcamentaria(self, **params):
+            def add_item(item):
+                fmt = '%Y-%m-%dT%H:%M:%SZ'
+                item['data_referencia'] = datetime.strptime(item['data_referencia'], fmt)
+                Session = sessionmaker()
+                Session.configure(bind = self.db_engine)
+                session = Session()
+                row = MscOrcamentaria(**item)
+                session.add(row)
+                session.commit()
+
+            self.getItems('msc_orcamentaria', params, add_item)        
