@@ -182,3 +182,4 @@ About
 
 data/**
 poetry.lock
+.vscode/
