@@ -3,6 +3,7 @@ import shutil
 from pathlib import Path
 import json
 from datetime import datetime
+from functools import reduce
 
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -13,6 +14,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from helpers.captcha import imageCaptchaSolver
 
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import exists
 
 from models.ente import Ente
 from models.mscOrcamentaria import MscOrcamentaria
@@ -202,11 +204,21 @@ class SiconfiAPIFetcher:
             def add_item(item):
                 fmt = '%Y-%m-%dT%H:%M:%SZ'
                 item['data_referencia'] = datetime.strptime(item['data_referencia'], fmt)
-                Session = sessionmaker()
-                Session.configure(bind = self.db_engine)
                 session = Session()
                 row = MscOrcamentaria(**item)
                 session.add(row)
                 session.commit()
 
-            self.getItems('msc_orcamentaria', params, add_item)        
+            Session = sessionmaker()
+            Session.configure(bind = self.db_engine)
+            session = Session()
+            params_copy = params.copy()
+            params_copy['cod_ibge'] = params_copy.pop('id_ente')
+            params_copy['tipo_matriz'] = params_copy.pop('co_tipo_matriz')
+            query_args = [getattr(MscOrcamentaria, key) == params_copy[key] for key in params_copy.keys()]
+            if session.query(exists().where(reduce(lambda x,y: x and y, query_args, True))).scalar():
+                session.commit()
+                print('API query already registered')
+            else:
+                session.commit()
+                self.getItems('msc_orcamentaria', params, add_item)        
